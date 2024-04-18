@@ -51,7 +51,7 @@ class CoAPFields(str, Enum):
     DST_ADDRESS             = f'{COAP_HEADER_ID}:Destination Address'
 
     
-class CoAOptionFields(str, Enum):
+class CoAPOptionFields(str, Enum):
     CONTENT_FORMAT          = 'Content-Format'
     ENTITY_TAG              = 'ETag'
     LOCATION_PATH           = 'Location-Path'
