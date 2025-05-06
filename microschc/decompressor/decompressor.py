@@ -5,12 +5,12 @@ Implementation SCHC packet decompression as described in section 7.2 of [1].
 '''
 
 from functools import cmp_to_key, reduce
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from microschc.binary.buffer import Buffer, Padding
 from microschc.parser.parser import PacketParser
 from microschc.protocol import ComputeFunctions
 from microschc.protocol.compute import ComputeFunctionType
-from microschc.rfc8724 import RuleFieldDescriptor, MatchMapping, RuleDescriptor
+from microschc.rfc8724 import DirectionIndicator, RuleFieldDescriptor, MatchMapping, RuleDescriptor
 from microschc.rfc8724 import CompressionDecompressionAction as CDA
 from microschc.rfc8724extras import ParserDefinitions
 
@@ -38,7 +38,7 @@ def compute_function_sort(entry_1: ComputeEntry, entry_2: ComputeEntry) -> int:
 
 
 
-def decompress(schc_packet: Buffer, rule_descriptor: RuleDescriptor, unparser: PacketParser=None) -> Buffer:
+def decompress(schc_packet: Buffer, rule_descriptor: RuleDescriptor, direction: Optional[DirectionIndicator] = None, unparser: PacketParser=None) -> Buffer:
     """
         Decompress the packet fields following the rule's compression actions.
         See section 7.2 of [1].
@@ -49,12 +49,22 @@ def decompress(schc_packet: Buffer, rule_descriptor: RuleDescriptor, unparser: P
 
     # remove rule ID
     schc_packet = schc_packet[rule_descriptor.id.length:]
+    
+    # Filter rule fields by direction
+    matching_fields: List[RuleFieldDescriptor]
+    if direction is None:
+        matching_fields = rule_descriptor.field_descriptors
+    else:
+        matching_fields: List[RuleFieldDescriptor] = [
+            rf for rf in rule_descriptor.field_descriptors
+            if rf.direction == direction or rf.direction == DirectionIndicator.BIDIRECTIONAL
+        ]
 
     # decompress all fields
     field_residue: Buffer
     residue_bitlength: int
     decompressed_field: Buffer
-    for rf_position, rf in enumerate(rule_descriptor.field_descriptors):
+    for rf_position, rf in enumerate(matching_fields):
         residue_bitlength = 0
         decompressed_field = Buffer(content=b'', length=0, padding=Padding.RIGHT)
         if rf.compression_decompression_action == CDA.NOT_SENT:
